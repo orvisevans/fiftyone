@@ -259,6 +259,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             else None
         )
 
+        needs_pipeline_update = False
+
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
@@ -273,6 +275,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 update["$set"]["metadata.outputs_schema"] = (
                     outputs_schema or {}
                 )
+                needs_pipeline_update = True
 
         elif run_state == ExecutionRunState.FAILED:
             update = {
@@ -309,6 +312,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if progress is not None:
             update["$set"]["status"] = progress
             update["$set"]["status"]["updated_at"] = datetime.utcnow()
+
+        # Using pipeline update instead of a single update doc fixes a case
+        #   where `metadata` is null and so accessing the dotted field
+        #   `metadata.output_schema` creates the document instead of erroring.
+        if needs_pipeline_update:
+            update = [update]
 
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
