@@ -269,10 +269,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 }
             }
 
-        if outputs_schema:
-            update["$set"]["metadata.outputs_schema"] = {
-                "$ifNull": [outputs_schema, {}]
-            }
+            if outputs_schema:
+                update["$set"]["metadata.outputs_schema"] = (
+                    outputs_schema or {}
+                )
 
         elif run_state == ExecutionRunState.FAILED:
             update = {
@@ -312,7 +312,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
-            update=[update],
+            update=update,
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
